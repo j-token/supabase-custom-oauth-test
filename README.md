@@ -84,23 +84,43 @@ http://localhost:3000/auth-callback.html
 npx supabase functions deploy naver-userinfo-proxy --no-verify-jwt --project-ref <your-ref>
 ```
 
-#### SQL 실행 (선택)
+#### Send Email Hook 설정
 
-이메일 로그인 + OAuth 로그인을 동시에 사용하려면:
+이메일 로그인(확인 이메일 발송)과 OAuth 로그인(확인 이메일 스킵)을 동시에 지원하려면 Send Email Hook 설정이 필요합니다.
 
-1. Supabase Vault에 Resend API Key 등록:
-   ```sql
-   INSERT INTO vault.secrets (name, secret)
-   VALUES ('resend_api_key', 'YOUR_RESEND_API_KEY');
-   ```
+OAuth만 사용하고 이메일 로그인이 필요 없다면 이 단계를 건너뛰고, 대시보드에서 **Confirm email** 옵션을 비활성화하세요.
 
-2. SQL Editor에서 순서대로 실행:
-   - `sql/01_send_email_hook.sql` — Send Email Hook 함수
-   - `sql/02_auto_confirm_oauth.sql` — OAuth 이메일 자동 인증 트리거
+##### 1. Resend API Key를 Supabase Vault에 등록
 
-3. 대시보드 > **Authentication > Hooks** > Send Email Hook 등록:
-   - Schema: `public`
-   - Function: `send_email_hook`
+SQL Editor에서 실행:
+
+```sql
+INSERT INTO vault.secrets (name, secret)
+VALUES ('resend_api_key', 'YOUR_RESEND_API_KEY');
+```
+
+##### 2. SQL 함수 생성
+
+SQL Editor에서 순서대로 실행:
+
+- `sql/01_send_email_hook.sql` — Send Email Hook 함수 (OAuth 유저 이메일 스킵, 이메일 유저 Resend 발송)
+- `sql/02_auto_confirm_oauth.sql` — OAuth 유저 이메일 자동 인증 트리거
+
+##### 3. Send Email Hook 등록
+
+대시보드 > **Authentication > Hooks** > **Add Send Email hook**
+
+| 설정 | 값 |
+|---|---|
+| Hook type | **Postgres** |
+| Postgres Schema | `public` |
+| Postgres function | `send_email_hook` |
+
+**Create hook**을 클릭합니다.
+
+> **NOTE**: HTTPS 타입의 Edge Function 훅을 사용할 수도 있습니다.
+> `supabase/functions/send-email/index.ts`에 동일한 로직의 Edge Function 버전이 포함되어 있습니다.
+> 이 경우 배포 후 Hook type을 HTTPS로 선택하고 함수 URL과 시크릿을 설정하세요.
 
 ## 실행
 
