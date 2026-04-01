@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>네이버 로그인 - Supabase Custom OAuth</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f6f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 48px 40px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 22px;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 32px;
+    }
+
+    /* 네이버 로그인 버튼 - 네이버 브랜드 가이드라인 준수 */
+    .naver-login-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #03C75A;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 14px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: 100%;
+    }
+
+    .naver-login-btn:hover { background: #02b351; }
+    .naver-login-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .naver-login-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* 로그인 후 유저 정보 */
+    .user-card {
+      text-align: left;
+      padding: 20px;
+      background: #f8fafb;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    .user-card .label {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .user-card .value {
+      font-size: 15px;
+      color: #1a1a1a;
+      margin-bottom: 14px;
+      word-break: break-all;
+    }
+
+    .user-card .value:last-child { margin-bottom: 0; }
+
+    .user-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      display: block;
+      border: 2px solid #e0e0e0;
+    }
+
+    .logout-btn {
+      background: #f0f0f0;
+      color: #333;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 24px;
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+
+    .logout-btn:hover { background: #e0e0e0; }
+
+    .error-msg {
+      background: #fff0f0;
+      color: #d32f2f;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .config-warning {
+      background: #fff8e1;
+      color: #f57f17;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      text-align: left;
+      line-height: 1.5;
+    }
+
+    .config-warning a {
+      color: #e65100;
+      font-weight: 600;
+    }
+
+    .hidden { display: none; }
+
+    .loading {
+      color: #888;
+      font-size: 14px;
+      padding: 20px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #e8f5e9;
+      color: #2e7d32;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>네이버 로그인 샘플</h1>
+    <p class="subtitle">Supabase Custom OAuth Provider</p>
+
+    <!-- 로딩 상태 -->
+    <div id="loading" class="loading">세션 확인 중...</div>
+
+    <!-- 에러 메시지 -->
+    <div id="error" class="error-msg hidden"></div>
+
+    <!-- 설정 미완료 경고 -->
+    <div id="config-warning" class="config-warning hidden">
+      아직 Supabase 설정이 완료되지 않았습니다.<br/>
+      아래 설정값을 입력하거나
+      <a href="setup-guide.html">설정 가이드</a>를 참고하세요.
+    </div>
+
+    <!-- 비로그인 상태 -->
+    <div id="login-section" class="hidden">
+      <!-- 설정 입력 폼 -->
+      <div id="config-form" style="text-align: left; margin-bottom: 24px;">
+        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 4px;">Supabase URL</label>
+        <input id="input-url" type="text" placeholder="https://your-project.supabase.co"
+          style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 12px;" />
+
+        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 4px;">Supabase Anon Key</label>
+        <input id="input-key" type="text" placeholder="eyJhbGciOiJI..."
+          style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 16px;" />
+      </div>
+
+      <button class="naver-login-btn" onclick="loginWithNaver()">
+        <!-- 네이버 N 로고 -->
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/>
+        </svg>
+        네이버로 로그인
+      </button>
+    </div>
+
+    <!-- 로그인 상태 -->
+    <div id="user-section" class="hidden">
+      <span class="badge">로그인됨</span>
+      <img id="user-avatar" class="user-avatar hidden" alt="프로필" />
+      <div class="user-card">
+        <div class="label">이름</div>
+        <div class="value" id="user-name">-</div>
+        <div class="label">이메일</div>
+        <div class="value" id="user-email">-</div>
+        <div class="label">Provider</div>
+        <div class="value" id="user-provider">-</div>
+        <div class="label">User ID</div>
+        <div class="value" id="user-id">-</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">로그아웃</button>
+    </div>
+  </div>
+
+  <script>
+    // =====================================================
+    // Supabase 설정
+    // 서버의 /api/config 엔드포인트에서 환경변수를 로드합니다.
+    // 직접 입력하려면 아래 값을 채우세요.
+    // =====================================================
+    let SUPABASE_URL = '';
+    let SUPABASE_ANON_KEY = '';
+
+    // 네이버 커스텀 OAuth 프로바이더 식별자
+    // Supabase 대시보드에서 등록한 identifier와 동일해야 합니다.
+    const NAVER_PROVIDER = 'custom:naver-test';
+
+    let sbClient = null;
+
+    // ----- UI 헬퍼 -----
+    const $ = (id) => document.getElementById(id);
+
+    function showError(msg) {
+      $('error').textContent = msg;
+      $('error').classList.remove('hidden');
+    }
+
+    function clearError() {
+      $('error').classList.add('hidden');
+    }
+
+    // ----- Supabase 클라이언트 초기화 -----
+    function getConfig() {
+      // 하드코딩된 값이 있으면 우선 사용
+      let url = SUPABASE_URL;
+      let key = SUPABASE_ANON_KEY;
+
+      // 없으면 localStorage에서 복원
+      if (!url) url = localStorage.getItem('sb_url') || '';
+      if (!key) key = localStorage.getItem('sb_key') || '';
+
+      return { url, key };
+    }
+
+    function initSupabase(url, key) {
+      if (!url || !key) return null;
+
+      // localStorage에 저장하여 콜백 페이지에서도 사용 가능
+      localStorage.setItem('sb_url', url);
+      localStorage.setItem('sb_key', key);
+
+      return window.supabase.createClient(url, key);
+    }
+
+    // ----- 네이버 로그인 -----
+    async function loginWithNaver() {
+      clearError();
+
+      // 입력 폼에서 값 읽기
+      const url = SUPABASE_URL || $('input-url').value.trim();
+      const key = SUPABASE_ANON_KEY || $('input-key').value.trim();
+
+      if (!url || !key) {
+        showError('Supabase URL과 Anon Key를 입력해주세요.');
+        return;
+      }
+
+      sbClient = initSupabase(url, key);
+      if (!sbClient) {
+        showError('Supabase 클라이언트 초기화에 실패했습니다.');
+        return;
+      }
+
+      // 콜백 URL: 현재 도메인 기준으로 auth-callback.html을 지정
+      const redirectTo = new URL('auth-callback.html', window.location.href).href;
+
+      const { data, error } = await sbClient.auth.signInWithOAuth({
+        provider: NAVER_PROVIDER,
+        options: {
+          redirectTo: redirectTo,
+        },
+      });
+
+      if (error) {
+        showError('로그인 요청 실패: ' + error.message);
+      }
+      // 성공 시 네이버 로그인 페이지로 리다이렉트됨
+    }
+
+    // ----- 로그아웃 -----
+    async function logout() {
+      if (!sbClient) return;
+
+      const { error } = await sbClient.auth.signOut();
+      if (error) {
+        showError('로그아웃 실패: ' + error.message);
+        return;
+      }
+
+      renderLoggedOut();
+    }
+
+    // ----- UI 렌더링 -----
+    function renderLoggedIn(user) {
+      $('loading').classList.add('hidden');
+      $('login-section').classList.add('hidden');
+      $('config-warning').classList.add('hidden');
+      $('user-section').classList.remove('hidden');
+
+      // user_metadata에서 네이버 프로필 정보 추출
+      const meta = user.user_metadata || {};
+      const name = meta.name || meta.nickname || meta.full_name || '-';
+      const email = user.email || meta.email || '-';
+      const avatar = meta.avatar_url || meta.profile_image || '';
+      const provider = user.app_metadata?.provider || NAVER_PROVIDER;
+
+      $('user-name').textContent = name;
+      $('user-email').textContent = email;
+      $('user-provider').textContent = provider;
+      $('user-id').textContent = user.id;
+
+      if (avatar) {
+        $('user-avatar').src = avatar;
+        $('user-avatar').classList.remove('hidden');
+      }
+    }
+
+    function renderLoggedOut() {
+      $('loading').classList.add('hidden');
+      $('user-section').classList.add('hidden');
+      $('login-section').classList.remove('hidden');
+
+      const { url, key } = getConfig();
+      if (!url || !key) {
+        $('config-warning').classList.remove('hidden');
+      } else {
+        $('config-warning').classList.add('hidden');
+        // 이미 설정값이 있으면 입력 폼 숨기기
+        $('config-form').classList.add('hidden');
+      }
+    }
+
+    // ----- 초기화 -----
+    async function init() {
+      // 서버에서 환경변수 기반 설정 로드
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        try {
+          const configRes = await fetch('/api/config');
+          if (configRes.ok) {
+            const config = await configRes.json();
+            if (config.supabaseUrl) SUPABASE_URL = config.supabaseUrl;
+            if (config.supabaseAnonKey) SUPABASE_ANON_KEY = config.supabaseAnonKey;
+          }
+        } catch {
+          // 서버 config를 가져올 수 없으면 수동 입력 폼 사용
+        }
+      }
+
+      const { url, key } = getConfig();
+
+      if (url && key) {
+        sbClient = initSupabase(url, key);
+      }
+
+      if (!sbClient) {
+        renderLoggedOut();
+        return;
+      }
+
+      // 현재 세션 확인
+      const { data: { session }, error } = await sbClient.auth.getSession();
+
+      if (error) {
+        showError('세션 확인 실패: ' + error.message);
+        renderLoggedOut();
+        return;
+      }
+
+      if (session?.user) {
+        renderLoggedIn(session.user);
+      } else {
+        renderLoggedOut();
+      }
+
+      // 인증 상태 변경 리스너
+      sbClient.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          renderLoggedIn(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          renderLoggedOut();
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

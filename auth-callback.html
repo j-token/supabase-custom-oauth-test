@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>인증 처리 중...</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f6f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 48px 40px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #03C75A;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    h2 {
+      font-size: 18px;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 14px;
+      color: #888;
+    }
+
+    .error-msg {
+      background: #fff0f0;
+      color: #d32f2f;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 16px;
+      text-align: left;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 16px;
+      color: #03C75A;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="spinner" class="spinner"></div>
+    <h2 id="title">인증 처리 중</h2>
+    <p id="message">네이버 로그인 결과를 확인하고 있습니다...</p>
+    <div id="error" class="error-msg" style="display: none;"></div>
+    <a id="back-link" class="back-link" href="index.html" style="display: none;">메인으로 돌아가기</a>
+  </div>
+
+  <script>
+    /**
+     * OAuth 콜백 처리 페이지
+     *
+     * Supabase OAuth 플로우:
+     * 1. 사용자가 네이버 로그인 완료
+     * 2. Supabase Auth 서버가 이 페이지로 리다이렉트 (URL에 세션 정보 포함)
+     * 3. supabase.auth.getSession()이 URL 해시/쿼리에서 세션을 파싱
+     * 4. 세션 확인 후 메인 페이지로 이동
+     */
+
+    async function handleCallback() {
+      const url = localStorage.getItem('sb_url');
+      const key = localStorage.getItem('sb_key');
+
+      if (!url || !key) {
+        showError('Supabase 설정 정보를 찾을 수 없습니다. 메인 페이지에서 다시 로그인해주세요.');
+        return;
+      }
+
+      const supabase = window.supabase.createClient(url, key);
+
+      // URL 해시에 포함된 토큰 정보로부터 세션 교환
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (error) {
+        showError('인증 처리 실패: ' + error.message);
+        return;
+      }
+
+      // URL에 error 파라미터가 있는 경우 (인증 거부 등)
+      const params = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const authError = params.get('error') || hashParams.get('error');
+      const errorDesc = params.get('error_description') || hashParams.get('error_description');
+
+      if (authError) {
+        showError(`인증 오류: ${authError}${errorDesc ? ' - ' + errorDesc : ''}`);
+        return;
+      }
+
+      if (session) {
+        document.getElementById('title').textContent = '로그인 성공!';
+        document.getElementById('message').textContent = '메인 페이지로 이동합니다...';
+        // 잠시 후 메인 페이지로 리다이렉트
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1000);
+      } else {
+        // 세션이 없으면 메인 페이지에서 다시 처리하도록 이동
+        window.location.href = 'index.html';
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('title').textContent = '인증 실패';
+      document.getElementById('message').textContent = '';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = msg;
+      document.getElementById('back-link').style.display = 'inline-block';
+    }
+
+    handleCallback();
+  </script>
+</body>
+</html>

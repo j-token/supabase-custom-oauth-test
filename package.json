@@ -1,0 +1,8 @@
+{
+  "name": "supabase-naver-oauth-sample",
+  "version": "1.0.0",
+  "description": "Supabase Custom OAuth - 네이버 로그인 샘플",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
