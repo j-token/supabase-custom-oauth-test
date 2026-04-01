@@ -38,7 +38,7 @@ cp .env.example .env
 
 ```env
 SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_your-key
 RESEND_API_KEY=re_your_resend_api_key
 ```
 
@@ -165,7 +165,7 @@ Supabase Auth는 최상위 레벨에서 `email`, `name` 등을 파싱하므로, 
 ## 보안 참고사항
 
 - **API 키를 소스코드에 커밋하지 마세요.** `.env` 파일은 `.gitignore`에 포함되어 있습니다.
-- **Supabase Anon Key**는 공개 키(publishable key)이지만, 프로젝트 URL 노출을 최소화하는 것이 좋습니다.
+- **Supabase Publishable Key**(`sb_publishable_...`)는 공개 키이지만, 프로젝트 URL 노출을 최소화하는 것이 좋습니다.
 - **Resend API Key**는 SQL 함수에 하드코딩하지 않고 [Supabase Vault](https://supabase.com/docs/guides/database/vault)를 사용합니다.
 - **Edge Function**의 `verify_jwt: false` 설정은 의도적입니다. Supabase Auth 서버가 네이버 access token으로 호출하기 때문입니다.
 - `server.js`는 Path Traversal 방어와 `.env` 파일 접근 차단이 적용되어 있습니다.

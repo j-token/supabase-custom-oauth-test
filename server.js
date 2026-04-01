@@ -25,7 +25,7 @@ function loadEnv() {
 loadEnv();
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 
 // 확장자별 Content-Type 매핑
 const MIME_TYPES = {
@@ -45,7 +45,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       supabaseUrl: SUPABASE_URL,
-      supabaseAnonKey: SUPABASE_ANON_KEY,
+      supabaseAnonKey: SUPABASE_PUBLISHABLE_KEY,
     }));
     return;
   }
@@ -92,8 +92,8 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.warn('[경고] SUPABASE_URL 또는 SUPABASE_ANON_KEY가 설정되지 않았습니다.');
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    console.warn('[경고] SUPABASE_URL 또는 SUPABASE_PUBLISHABLE_KEY가 설정되지 않았습니다.');
     console.warn('.env 파일을 생성하거나 환경변수를 설정해주세요. (.env.example 참고)');
   }
   console.log(`서버가 실행되었습니다: http://localhost:${PORT}`);

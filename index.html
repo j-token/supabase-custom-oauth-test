@@ -188,7 +188,7 @@
         <input id="input-url" type="text" placeholder="https://your-project.supabase.co"
           style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 12px;" />
 
-        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 4px;">Supabase Anon Key</label>
+        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 4px;">Supabase Publishable Key</label>
         <input id="input-key" type="text" placeholder="eyJhbGciOiJI..."
           style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 16px;" />
       </div>
@@ -227,7 +227,7 @@
     // 직접 입력하려면 아래 값을 채우세요.
     // =====================================================
     let SUPABASE_URL = '';
-    let SUPABASE_ANON_KEY = '';
+    let SUPABASE_PUBLISHABLE_KEY = '';
 
     // 네이버 커스텀 OAuth 프로바이더 식별자
     // Supabase 대시보드에서 등록한 identifier와 동일해야 합니다.
@@ -251,7 +251,7 @@
     function getConfig() {
       // 하드코딩된 값이 있으면 우선 사용
       let url = SUPABASE_URL;
-      let key = SUPABASE_ANON_KEY;
+      let key = SUPABASE_PUBLISHABLE_KEY;
 
       // 없으면 localStorage에서 복원
       if (!url) url = localStorage.getItem('sb_url') || '';
@@ -276,10 +276,10 @@
 
       // 입력 폼에서 값 읽기
       const url = SUPABASE_URL || $('input-url').value.trim();
-      const key = SUPABASE_ANON_KEY || $('input-key').value.trim();
+      const key = SUPABASE_PUBLISHABLE_KEY || $('input-key').value.trim();
 
       if (!url || !key) {
-        showError('Supabase URL과 Anon Key를 입력해주세요.');
+        showError('Supabase URL과 Publishable Key를 입력해주세요.');
         return;
       }
 
@@ -361,13 +361,13 @@
     // ----- 초기화 -----
     async function init() {
       // 서버에서 환경변수 기반 설정 로드
-      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
         try {
           const configRes = await fetch('/api/config');
           if (configRes.ok) {
             const config = await configRes.json();
             if (config.supabaseUrl) SUPABASE_URL = config.supabaseUrl;
-            if (config.supabaseAnonKey) SUPABASE_ANON_KEY = config.supabaseAnonKey;
+            if (config.supabaseAnonKey) SUPABASE_PUBLISHABLE_KEY = config.supabaseAnonKey;
           }
         } catch {
           // 서버 config를 가져올 수 없으면 수동 입력 폼 사용
