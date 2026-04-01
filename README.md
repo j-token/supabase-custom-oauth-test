@@ -82,6 +82,9 @@ http://localhost:3000/auth-callback.html
 ```bash
 # 네이버 userinfo 프록시
 npx supabase functions deploy naver-userinfo-proxy --no-verify-jwt --project-ref <your-ref>
+
+# Send Email Hook 함수
+npx supabase functions deploy send-email --no-verify-jwt --project-ref <your-ref>
 ```
 
 #### Send Email Hook 설정
@@ -90,20 +93,16 @@ npx supabase functions deploy naver-userinfo-proxy --no-verify-jwt --project-ref
 
 OAuth만 사용하고 이메일 로그인이 필요 없다면 이 단계를 건너뛰고, 대시보드에서 **Confirm email** 옵션을 비활성화하세요.
 
-##### 1. Resend API Key를 Supabase Vault에 등록
+##### 1. Edge Function 시크릿 등록
+
+```bash
+npx supabase secrets set RESEND_API_KEY=YOUR_RESEND_API_KEY --project-ref <your-ref>
+```
+
+##### 2. OAuth 유저 이메일 자동 인증 트리거
 
 SQL Editor에서 실행:
 
-```sql
-INSERT INTO vault.secrets (name, secret)
-VALUES ('resend_api_key', 'YOUR_RESEND_API_KEY');
-```
-
-##### 2. SQL 함수 생성
-
-SQL Editor에서 순서대로 실행:
-
-- `sql/01_send_email_hook.sql` — Send Email Hook 함수 (OAuth 유저 이메일 스킵, 이메일 유저 Resend 발송)
 - `sql/02_auto_confirm_oauth.sql` — OAuth 유저 이메일 자동 인증 트리거
 
 ##### 3. Send Email Hook 등록
@@ -112,15 +111,21 @@ SQL Editor에서 순서대로 실행:
 
 | 설정 | 값 |
 |---|---|
-| Hook type | **Postgres** |
-| Postgres Schema | `public` |
-| Postgres function | `send_email_hook` |
+| Hook type | **HTTPS** |
+| URL | `https://<your-ref>.supabase.co/functions/v1/send-email` |
+| Secret | **Generate Secret** 클릭 후 복사 |
 
 **Create hook**을 클릭합니다.
 
-> **NOTE**: HTTPS 타입의 Edge Function 훅을 사용할 수도 있습니다.
-> `supabase/functions/send-email/index.ts`에 동일한 로직의 Edge Function 버전이 포함되어 있습니다.
-> 이 경우 배포 후 Hook type을 HTTPS로 선택하고 함수 URL과 시크릿을 설정하세요.
+생성된 시크릿을 Edge Function에 등록:
+
+```bash
+npx supabase secrets set SEND_EMAIL_HOOK_SECRET="생성된_시크릿" --project-ref <your-ref>
+```
+
+> **NOTE**: Postgres 타입 훅을 사용할 수도 있습니다.
+> `sql/01_send_email_hook.sql`에 동일한 로직의 Postgres 함수 버전이 포함되어 있습니다.
+> 이 경우 Supabase Vault에 Resend API Key를 등록하고, Hook type을 Postgres로 선택하세요.
 
 ## 실행
 
